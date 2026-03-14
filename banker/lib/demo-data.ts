@@ -6,7 +6,10 @@ export const demoUser: DemoUser = {
   lastName: "Chen",
   displayName: "River Chen",
   avatarInitials: "RC",
-  membershipSince: "2023-06-01T12:00:00.000Z"
+  membershipSince: "2023-06-01T12:00:00.000Z",
+  email: "river.chen@example.com",
+  phone: "+1 (555) 123-4567",
+  address: "123 Maple Street\nToronto, ON M5V 2H1\nCanada"
 };
 
 export const demoAccounts: Account[] = [

@@ -8,6 +8,9 @@ export interface DemoUser {
   displayName: string;
   avatarInitials: string;
   membershipSince: string;
+  email: string;
+  phone: string;
+  address: string;
 }
 
 export interface Account {

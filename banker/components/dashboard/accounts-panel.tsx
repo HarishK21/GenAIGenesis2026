@@ -12,19 +12,20 @@ export function AccountsPanel() {
 
   return (
     <section className="space-y-6">
-      <div>
+      <div className="glass-card rounded-2xl p-6 border-bank-200/50">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-bank-700">Accounts</p>
         <h2 className="mt-2 text-3xl font-semibold text-ink">Available balances</h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Each card is intentionally minimal: account name, masked number, available balance, and
-          the last synthetic update timestamp.
+          Each card securely displays your account name, masked number, available balance, and
+          the last update timestamp.
         </p>
-        {isLoading ? <p className="mt-2 text-sm text-bank-700">Loading balances from MongoDB...</p> : null}
+        {isLoading ? <p className="mt-2 text-sm text-bank-700">Loading balances...</p> : null}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {accounts.map((account) => (
           <Card
+            className="glass-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group"
             key={account.id}
             data-telemetry-id={`account-card-${account.id}`}
             data-telemetry-event="account_card_click"
@@ -32,7 +33,7 @@ export function AccountsPanel() {
           >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="rounded-full bg-bank-50 p-2 text-bank-700">
+                <div className="rounded-full bg-bank-100/50 p-2.5 text-bank-700 transition-colors group-hover:bg-bank-100">
                   <Wallet className="h-5 w-5" />
                 </div>
                 <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">

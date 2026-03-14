@@ -16,6 +16,8 @@ interface BankState {
   initialize: () => Promise<void>;
   refresh: () => Promise<void>;
   submitTransfer: (payload: TransferRequest) => Promise<BankSnapshot>;
+  updateUser: (payload: Partial<DemoUser>) => Promise<BankSnapshot>;
+  resetData: () => Promise<BankSnapshot>;
 }
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -46,6 +48,34 @@ async function postTransfer(payload: TransferRequest) {
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.error ?? "Unable to submit the demo transfer.");
+  }
+
+  return (await response.json()) as BankSnapshot;
+}
+
+async function postUserProfile(payload: Partial<DemoUser>) {
+  const response = await fetch("/api/bank/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error ?? "Unable to update the user profile.");
+  }
+
+  return (await response.json()) as BankSnapshot;
+}
+
+async function postResetData() {
+  const response = await fetch("/api/bank/reset", {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error ?? "Unable to reset the demo data.");
   }
 
   return (await response.json()) as BankSnapshot;
@@ -124,6 +154,30 @@ export const useBankStore = create<BankState>((set, get) => ({
         error: message,
         isSubmittingTransfer: false
       });
+      throw error;
+    }
+  },
+  updateUser: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const snapshot = await postUserProfile(payload);
+      applySnapshot(set, snapshot);
+      return snapshot;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update profile.";
+      set({ error: message, isLoading: false });
+      throw error;
+    }
+  },
+  resetData: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const snapshot = await postResetData();
+      applySnapshot(set, snapshot);
+      return snapshot;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to reset data.";
+      set({ error: message, isLoading: false });
       throw error;
     }
   }

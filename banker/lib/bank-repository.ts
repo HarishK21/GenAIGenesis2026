@@ -2,7 +2,7 @@ import "server-only";
 
 import { getDb } from "@/lib/mongodb";
 import { demoAccounts, demoTransactions, demoUser } from "@/lib/demo-data";
-import { Account, BankSnapshot, SessionSummary, TelemetryEvent, Transaction, TransferRequest } from "@/lib/types";
+import { Account, BankSnapshot, DemoUser, SessionSummary, TelemetryEvent, Transaction, TransferRequest } from "@/lib/types";
 
 const DEMO_USER_ID = demoUser.id;
 
@@ -179,6 +179,32 @@ export async function createTransfer(payload: TransferRequest): Promise<BankSnap
     transactionsCollection.insertOne(transaction)
   ]);
 
+  return getBankSnapshot();
+}
+
+export async function updateUserProfile(payload: Partial<DemoUser>): Promise<BankSnapshot> {
+  await seedDemoData();
+  const db = await getDb();
+  
+  await db.collection("users").updateOne(
+    { id: DEMO_USER_ID },
+    { $set: payload }
+  );
+
+  return getBankSnapshot();
+}
+
+export async function resetDemoData(): Promise<BankSnapshot> {
+  const db = await getDb();
+  
+  // Clear existing demo data
+  await db.collection("users").deleteOne({ id: DEMO_USER_ID });
+  await db.collection("accounts").deleteMany({ userId: DEMO_USER_ID });
+  await db.collection("transactions").deleteMany({ userId: DEMO_USER_ID });
+  
+  // Re-seed with fresh data
+  await seedDemoData();
+  
   return getBankSnapshot();
 }
 

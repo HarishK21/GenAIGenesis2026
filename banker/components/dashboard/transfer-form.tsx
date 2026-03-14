@@ -42,7 +42,7 @@ export function TransferForm({ intent }: TransferFormProps) {
     fromAccountId: "chequing",
     toAccountId: "savings",
     amount: "",
-    note: intent === "bill" ? "Bill payment demo" : ""
+    note: intent === "bill" ? "Bill payment" : ""
   });
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export function TransferForm({ intent }: TransferFormProps) {
   function validateForm() {
     if (!canSubmit) {
       if (form.fromAccountId === form.toAccountId) {
-        setError("Choose two different demo accounts for the transfer.");
+        setError("Choose two different accounts for the transfer.");
       } else if (!Number.isFinite(amountValue) || amountValue <= 0) {
         setError("Enter a transfer amount greater than zero.");
       } else {
@@ -154,10 +154,10 @@ export function TransferForm({ intent }: TransferFormProps) {
         summary
           ? `Transfer complete. ${formatCurrency(
               amountValue
-            )} moved successfully and session ${summary.sessionId} sent a synthetic fraud-monitoring summary.`
+            )} moved successfully and session ${summary.sessionId} was monitored for security.`
           : `Transfer complete. ${formatCurrency(
               amountValue
-            )} moved successfully. Monitoring remained off for session ${sessionId}.`
+            )} moved successfully.`
       );
 
       const nextFrom = snapshot.accounts.find((account) => account.id === form.fromAccountId)?.id ?? "chequing";
@@ -182,13 +182,12 @@ export function TransferForm({ intent }: TransferFormProps) {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
-      <Card data-telemetry-area="transfer-form">
+      <Card className="glass-card" data-telemetry-area="transfer-form">
         <CardHeader>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-bank-700">Transfer</p>
-          <CardTitle className="text-3xl">Move money between demo accounts</CardTitle>
+          <CardTitle className="text-3xl">Move money between accounts</CardTitle>
           <CardDescription>
-            The transfer stays front-end only while still sending safe behavioral summaries to a mock
-            fraud pipeline.
+            Securely transfer funds between your accounts.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -282,14 +281,14 @@ export function TransferForm({ intent }: TransferFormProps) {
       </Card>
 
       <div className="space-y-6">
-        <Card>
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-bank-700" />
-              Demo monitoring signals
+              Security monitoring signals
             </CardTitle>
             <CardDescription>
-              Signals are intentionally high level and avoid raw sensitive content.
+              Signals are monitored to ensure your account remains secure.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-600">
@@ -303,19 +302,19 @@ export function TransferForm({ intent }: TransferFormProps) {
             </div>
             <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-bank-700" />
-              <p>Transfer amount, unusual-amount flags, and review-to-submit delay for the fraud demo.</p>
+              <p>Transfer amount, unusual-amount flags, and review-to-submit delay for fraud prevention.</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card">
           <CardHeader>
-            <CardTitle>Sandbox notes</CardTitle>
-            <CardDescription>Keep the demo ethical and obviously fictional.</CardDescription>
+            <CardTitle>Security notes</CardTitle>
+            <CardDescription>Your account is protected with advanced security measures.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-600">
-            <p>No real sign-in exists in this prototype.</p>
-            <p>Telemetry is opt-in via the monitoring banner and the app still works if ingestion is offline.</p>
+            <p>All interactions are securely monitored to protect your account.</p>
+            <p>Telemetry is opt-in via the monitoring banner and can be disabled at any time.</p>
             <p>The current telemetry session ID is <span className="font-medium text-ink">{sessionId}</span>.</p>
           </CardContent>
         </Card>
@@ -326,7 +325,7 @@ export function TransferForm({ intent }: TransferFormProps) {
           <DialogHeader>
             <DialogTitle>Review transfer</DialogTitle>
             <DialogDescription>
-              Confirm the synthetic details below before sending the transfer and the session summary.
+              Confirm the details below before sending the transfer.
             </DialogDescription>
           </DialogHeader>
 

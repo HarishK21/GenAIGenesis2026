@@ -19,8 +19,8 @@ const displayFont = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "NorthMaple Bank Demo",
-  description: "Fictional online banking sandbox for a fraud detection hackathon demo."
+  title: "NorthMaple Bank",
+  description: "Secure and personalized online banking experience."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

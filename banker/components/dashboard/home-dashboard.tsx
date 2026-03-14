@@ -6,6 +6,7 @@ import { ArrowRight, ArrowRightLeft, ReceiptText, WalletCards } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConsentBanner } from "@/components/consent-banner";
 import { TransactionList } from "@/components/dashboard/transaction-list";
 import { formatCurrency, formatTimestamp } from "@/lib/formatters";
 import { useBankStore } from "@/lib/bank-store";
@@ -20,27 +21,29 @@ export function HomeDashboard() {
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-      <Card className="overflow-hidden bg-gradient-to-br from-white via-white to-bank-50/70">
+    <div className="flex flex-col gap-6">
+      <ConsentBanner />
+
+      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr] animate-fade-in-up">
+        <Card className="glass-card overflow-hidden">
         <CardHeader className="pb-4">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-bank-700">Home</p>
           <CardTitle className="text-3xl">Hello, {user.firstName}</CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Your fictional NorthMaple snapshot keeps the layout bank-like while staying clearly in a
-            demo environment.
+            Your NorthMaple Bank dashboard provides a clear, secure overview of your finances.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 rounded-2xl border border-bank-100 bg-white/80 p-5 sm:grid-cols-2">
+        <CardContent className="space-y-5 animate-fade-in-up delay-75">
+          <div className="grid gap-4 rounded-2xl border border-white/20 bg-white/40 backdrop-blur-md p-5 sm:grid-cols-2 shadow-sm">
             <div>
               <p className="text-sm text-slate-500">Combined available balance</p>
               <p className="mt-2 text-3xl font-semibold text-ink">{formatCurrency(totalBalance)}</p>
               <p className="mt-2 text-sm text-slate-500">
-                {isLoading ? "Refreshing MongoDB demo data..." : `Last refresh ${formatTimestamp(accounts[0]?.lastUpdated ?? new Date().toISOString())}`}
+                {isLoading ? "Refreshing data..." : `Last refresh ${formatTimestamp(accounts[0]?.lastUpdated ?? new Date().toISOString())}`}
               </p>
             </div>
             <div className="grid gap-3 sm:justify-end">
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-xl bg-gradient-to-r from-bank-600 to-bank-500">
                 <Link
                   href="/transfer"
                   data-telemetry-id="quick-transfer"
@@ -51,7 +54,7 @@ export function HomeDashboard() {
                   Transfer Money
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
+              <Button asChild variant="outline" size="lg" className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-white/50 backdrop-blur-sm border-white/50">
                 <Link href="/transfer" data-telemetry-id="quick-pay-bill" data-telemetry-area="hero-actions">
                   <ReceiptText className="mr-2 h-4 w-4" />
                   Pay Bill
@@ -61,26 +64,25 @@ export function HomeDashboard() {
           </div>
 
           <p className="text-sm text-slate-500">
-            Bill pay is intentionally simplified and represented through the same transfer sandbox to
-            keep the prototype compact.
+            Bill pay is integrated securely to streamline your everyday transactions.
           </p>
         </CardContent>
       </Card>
 
-      <Card data-telemetry-area="account-summary">
+      <Card className="glass-card animate-fade-in-up delay-150" data-telemetry-area="account-summary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <WalletCards className="h-5 w-5 text-bank-700" />
             Account summary
           </CardTitle>
-          <CardDescription>Two synthetic accounts for a clean, believable banking snapshot.</CardDescription>
+          <CardDescription>Your active accounts and available balances.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {accounts.map((account) => (
             <Link
               key={account.id}
               href="/accounts"
-              className="block rounded-xl border border-border bg-surface px-4 py-4 transition-colors hover:border-bank-200 hover:bg-bank-50/70"
+              className="block rounded-xl border border-white/30 bg-white/40 px-4 py-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:bg-white/60 hover:border-white/50"
               data-telemetry-id={`account-card-${account.id}`}
               data-telemetry-event="account_card_click"
               data-telemetry-area="account-summary"
@@ -99,11 +101,11 @@ export function HomeDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="xl:col-span-2">
+      <Card className="glass-card xl:col-span-2 animate-fade-in-up delay-300">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Preview of the most recent synthetic transactions.</CardDescription>
+            <CardDescription>Your most recent transactions across all accounts.</CardDescription>
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link href="/activity" data-telemetry-id="home-view-activity">
@@ -115,6 +117,7 @@ export function HomeDashboard() {
           <TransactionList transactions={transactions} compact />
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

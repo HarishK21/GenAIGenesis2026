@@ -32,19 +32,19 @@ export function ActivityPanel() {
 
   return (
     <section className="space-y-6">
-      <div>
+      <div className="glass-card rounded-2xl p-6 border-bank-200/50">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-bank-700">Activity</p>
         <h2 className="mt-2 text-3xl font-semibold text-ink">Recent transaction history</h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Filters stay front-end only so the demo remains light, fast, and easy to reason about.
+          Filter your transaction history to securely track deposits, withdrawals, and transfers.
         </p>
-        {isLoading ? <p className="mt-2 text-sm text-bank-700">Loading stored transactions from MongoDB...</p> : null}
+        {isLoading ? <p className="mt-2 text-sm text-bank-700">Loading stored transactions...</p> : null}
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Filter activity</CardTitle>
-          <CardDescription>Switch views to simulate a lightweight account activity workflow.</CardDescription>
+          <CardDescription>Switch views to easily track your account activity.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           {filterOptions.map((option) => (
@@ -66,7 +66,7 @@ export function ActivityPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
-          <CardDescription>{filteredTransactions.length} items in the current demo view.</CardDescription>
+          <CardDescription>{filteredTransactions.length} items in the current view.</CardDescription>
         </CardHeader>
         <CardContent>
           <TransactionList transactions={filteredTransactions} showAccount />

@@ -43,14 +43,17 @@ export function TransactionList({
           <div
             key={transaction.id}
             className={cn(
-              "flex items-center justify-between gap-4 rounded-xl border border-border bg-white px-4 py-3",
+              "flex items-center justify-between gap-4 rounded-xl border border-white/40 bg-white/40 backdrop-blur-md px-4 py-3 transition-all duration-300 hover:bg-white/60 hover:-translate-y-0.5 hover:shadow-sm",
               compact && "py-2.5"
             )}
             data-telemetry-id={`transaction-${transaction.id}`}
             data-telemetry-area="activity-list"
           >
             <div className="flex items-start gap-3">
-              <div className="rounded-full bg-bank-50 p-2 text-bank-700">
+              <div className={cn(
+                "rounded-full p-2.5",
+                transaction.direction === "in" ? "bg-bank-100 text-bank-700" : "bg-slate-100 text-slate-600"
+              )}>
                 <Icon className="h-4 w-4" />
               </div>
               <div>
