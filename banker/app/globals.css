@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-surface text-slate-900;
+    background-image:
+      radial-gradient(circle at top left, rgba(88, 173, 115, 0.16), transparent 28%),
+      linear-gradient(180deg, #f8faf8 0%, #f4f6f5 100%);
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  ::selection {
+    background: rgba(88, 173, 115, 0.2);
+  }
+}
