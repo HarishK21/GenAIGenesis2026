@@ -160,7 +160,6 @@ export function getOverviewMetrics(
   });
 
   const recentFlaggedSessions = sessions
-    .filter((session) => session.summary.status !== "Normal")
     .sort((left, right) =>
       right.summary.lastEventTime.localeCompare(left.summary.lastEventTime)
     )

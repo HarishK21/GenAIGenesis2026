@@ -1,76 +1,78 @@
-# FraudShield
+# 🛡️ FraudShield + 🏦 NorthMaple Bank
 
-FraudShield is a real-time fraud detection project for behavioral risk monitoring in online banking.
+Real-time fraud detection for online banking, powered by behavioral telemetry.
 
-- `fraudshield` (port `3001`): analyst dashboard that scores sessions, creates alerts/cases, and shows investigation context.
-- `banker` (port `3000`): synthetic banking client used to generate transfer sessions and behavioral telemetry.
+FraudShield combines classic transaction checks with session-level behavior signals to catch suspicious transfers earlier and give analysts clearer triage context.
 
 Built with `railtracks`.
 
-## Project Inspiration
+## 💡 Project Inspiration
 
-Traditional fraud checks are often transaction-only (amount limits, destination checks, velocity), which can miss session-level behavior that signals account takeover or automated abuse.  
+Traditional fraud checks are often transaction-only (amount limits, destination checks, velocity). That leaves a gap: account takeover and automated abuse can look "normal" transaction-wise but still behave abnormally at the session level.
+
 This project was motivated by the idea that fraud can be detected earlier by combining:
-
 - transaction context (amount, destination novelty, velocity), and
 - interaction behavior (navigation patterns, correction bursts, hesitation timing, mouse movement signals).
 
-The goal is to catch suspicious transfers in real time while still preserving a clean analyst workflow for triage and escalation.
+Why it matters in generative AI:
+- AI can help interpret noisy, multi-signal behavior patterns and improve analyst decision support.
+- Human analysts still stay in the loop with explainable factors, alerts, and case workflows.
 
-## Technology Stack
+## 🧱 Technology Stack
 
 ### Languages
-
 - TypeScript
 - JavaScript
 - Python
 - CSS
 
 ### Frameworks and Libraries
-
 - Next.js (App Router)
 - React
 - Tailwind CSS
 - MongoDB Node.js Driver
 - Playwright (concurrent behavioral harness)
 - Zustand (bank app state)
-- Railtracks (validation orchestration integration)
+- Railtracks (validation orchestration)
 
 ### Platforms
-
 - MongoDB
-- HuggingFace OpenAI-compatible inference endpoint for optional AI co-assessment (`gpt-oss-120b`)
+- HuggingFace OpenAI-compatible inference endpoint (optional AI co-assessment with `gpt-oss-120b`)
 - Localhost deployment for both apps (`3000` and `3001`)
 
 ### Tools
-
 - Node.js / npm
+- Python / pip
 - Git / GitHub
-- Python + `pip`
 
-## Product Summary
+## 🚀 Product Summary
 
 FraudShield simulates a full fraud detection loop:
-
-1. A user performs banking actions in the banking client app, including transfer review and submit.
-2. Behavioral telemetry is captured and sent to backend storage.
-3. FraudShield scores each session using a rules pipeline and optional AI co-assessment.
-4. Analysts get live session views, triggered alerts, and case queue actions.
+1. A user performs banking actions in the `banker` app.
+2. Behavioral telemetry is captured and persisted.
+3. `fraudshield` scores sessions using rules and optional AI co-assessment.
+4. Analysts review live sessions, alerts, and cases.
 
 Core features:
+- Real-time risk scoring by session
+- Alert severity tiers (`Low`, `Medium`, `High`) with reason codes
+- Case workflow (`Open`, `Investigating`, `Resolved`)
+- Session drill-down with event timeline and top risk factors
+- Concurrent validation harness (up to 50 agents)
+- Run-scoped model comparison (`rules-only` vs `rules+AI`) for precision/recall/F1 and false-positive deltas
 
-- Real-time risk scoring by session.
-- Alert severity tiers (low/medium/high) with reason codes.
-- Case generation and status workflow (`Open`, `Investigating`, `Resolved`).
-- Session drill-down with event timeline and top risk factors.
-- Concurrent validation harness (up to 50 agents) with run-level reporting.
-- Run-scoped model comparison metrics (`rules-only` vs `rules+AI`) for precision/recall/F1 and false-positive deltas.
+Innovative angle:
+- It blends transaction risk + behavior signals in one pipeline.
+- It supports explainable analyst workflows instead of black-box-only scoring.
 
-## AI Use
+## 🧭 Two Apps, One Flow
 
-Survey answer: **Yes**. More than 70% of implementation and iteration work was AI-assisted.
+| App | Port | Role |
+| --- | --- | --- |
+| `banker` | `3000` | Synthetic banking client that generates transfer sessions + telemetry |
+| `fraudshield` | `3001` | Analyst dashboard for scoring, alerts, and case workflow |
 
-## Repository Structure
+## 📂 Repository Structure
 
 ```text
 banker/
@@ -90,13 +92,12 @@ testing/railtracks/
   run_ab_validation.py
 ```
 
-## Setup
+## ⚙️ Setup
 
 ### Prerequisites
-
 - Node.js 20+
 - npm
-- Python 3.10+ (for Railtracks wrapper)
+- Python 3.10+
 - MongoDB reachable by both apps
 
 ### Install
@@ -115,7 +116,6 @@ pip install -r requirements.txt
 ### Environment
 
 Create:
-
 - `banker/.env` (or `.env.local`)
 - `fraudshield/.env`
 
@@ -135,7 +135,7 @@ FRAUD_AI_MODEL=openai/gpt-oss-120b
 FRAUD_AI_API_KEY=test
 ```
 
-## Run The Apps
+## ▶️ Run Locally
 
 Terminal 1:
 
@@ -152,11 +152,10 @@ npm run dev
 ```
 
 Open:
-
 - Bank UI: `http://localhost:3000`
-- Fraud dashboard: `http://localhost:3001/dashboard`
+- Fraud Dashboard: `http://localhost:3001/dashboard`
 
-## Validation And Testing
+## 🧪 Validation and Testing
 
 ### 50-Agent Concurrent Validation
 
@@ -166,22 +165,20 @@ From `banker/`:
 node testing/session-harness/simulate-session-batch.js --phase=scale50 --capture=sample
 ```
 
-Artifacts (generated at runtime):
-
+Artifacts generated at runtime:
 - `banker/testing/session-harness/latest/report.json`
 - `banker/testing/session-harness/latest/*.webm`
 - `banker/testing/session-harness/latest/*-activity.png`
 
-### Verify Uplift For A Specific Run
+### Verify Uplift for a Specific Run
 
-Use run-scoped metrics:
+Use:
 
 ```text
 http://localhost:3001/api/fraud/metrics?testRunId=<runId-from-report>
 ```
 
 Key fields:
-
 - `comparison.uplift.f1Delta`
 - `comparison.uplift.precisionDelta`
 - `comparison.uplift.falsePositiveRateDelta`
@@ -196,5 +193,12 @@ python testing/railtracks/run_ab_validation.py --phase=scale50 --total=50 --conc
 ```
 
 Output:
-
 - `testing/railtracks/latest-ab-summary.json`
+
+## 🤖 AI Use
+
+Survey answer: **Yes**. More than 70% of implementation and iteration work was AI-assisted.
+
+---
+
+For live presentations, use `DEMO_SCRIPT.md` for a ready-to-read screenshare script 🎤

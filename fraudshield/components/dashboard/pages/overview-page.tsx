@@ -150,9 +150,9 @@ export function OverviewPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Flagged Sessions</CardTitle>
+            <CardTitle>Recent Sessions</CardTitle>
             <CardDescription>
-              Sessions currently on watch or high-risk status.
+              Most recent sessions across all risk levels, including normal traffic.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-0 pb-2 pt-0">
