@@ -332,7 +332,7 @@ function getScenarioTemplates() {
     {
       scenarioId: "normal-steady-review",
       target: "unflagged",
-      flow: async (page) => {
+      flow: async (page, item) => {
         await gotoTransfer(page, { waitBeforeNavMs: 2200 });
         await page.waitForTimeout(1_200);
         await submitTransfer(page, {
@@ -346,7 +346,7 @@ function getScenarioTemplates() {
     {
       scenarioId: "normal-careful-typing",
       target: "unflagged",
-      flow: async (page) => {
+      flow: async (page, item) => {
         await gotoTransfer(page, { waitBeforeNavMs: 2200 });
         await page.waitForTimeout(1_400);
         await submitTransfer(page, {
@@ -363,7 +363,7 @@ function getScenarioTemplates() {
     {
       scenarioId: "flagged-erratic-nav",
       target: "flagged",
-      flow: async (page) => {
+      flow: async (page, item) => {
         await gotoTransfer(page);
         await doRapidNavigation(page);
         await doErraticMouse(page);
@@ -379,7 +379,7 @@ function getScenarioTemplates() {
     {
       scenarioId: "flagged-drift-bursts",
       target: "flagged",
-      flow: async (page) => {
+      flow: async (page, item) => {
         await gotoTransfer(page);
         await doHesitationBursts(page);
         await doRapidNavigation(page);
@@ -440,12 +440,17 @@ function buildRunPlan(config) {
     }
 
     const sequence = useFlagged ? flaggedIndex : normalIndex;
+    const userId = buildUserId(index, config.testUserCount);
+    const normalGeoRegion = "Toronto, ON, CA";
+    const flaggedGeoRegion = "Miami, FL, US";
+
     return {
       name: `${target}-${String(sequence).padStart(3, "0")}`,
       target,
-      userId: buildUserId(index, config.testUserCount),
+      userId,
       agentId: `agent-${String(index + 1).padStart(3, "0")}`,
       scenarioId: template.scenarioId,
+      geoRegion: useFlagged ? flaggedGeoRegion : normalGeoRegion,
       flow: template.flow,
       captureArtifacts
     };
@@ -480,6 +485,11 @@ async function runScenario(browser, config, item) {
   const startedAt = Date.now();
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
+    extraHTTPHeaders: item.geoRegion
+      ? {
+          "x-test-geo-region": item.geoRegion
+        }
+      : undefined,
     ...(item.captureArtifacts
       ? {
           recordVideo: {
@@ -494,7 +504,7 @@ async function runScenario(browser, config, item) {
 
   try {
     await loginAsUser(page, config, item);
-    await item.flow(page);
+    await item.flow(page, item);
     await gotoActivity(page);
 
     let screenshotPath = null;

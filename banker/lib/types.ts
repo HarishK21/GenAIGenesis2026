@@ -92,6 +92,7 @@ export interface SessionSummary {
   sharpDirectionChanges: number;
   rapidRepeatedClicks: number;
   transferAmount: number;
+  unusualLocationFlag?: boolean;
   fromAccountId: string;
   toAccountId: string;
   majorClickSequence: string[];

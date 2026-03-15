@@ -140,6 +140,18 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   {formatDateTime(session.summary.lastEventTime)}
                 </p>
               </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 md:col-span-2 xl:col-span-3">
+                <p className="text-sm text-slate-400">Observed geo region</p>
+                <p className="mt-2 text-lg font-semibold text-slate-50">
+                  {session.geoRegion}
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Location anomaly signal:{" "}
+                  <span className="font-semibold text-slate-200">
+                    {session.summary.unusualLocationFlag ? "Triggered" : "Not triggered"}
+                  </span>
+                </p>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">

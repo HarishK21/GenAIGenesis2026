@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveTelemetryBatch } from "@/lib/bank-repository";
 import { getUserFromRequest } from "@/lib/auth";
+import { getRequestTelemetryContext } from "@/lib/request-fingerprint";
 
 export async function POST(request: Request) {
   const user = getUserFromRequest(request);
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await saveTelemetryBatch(user.id, body);
+    const requestContext = getRequestTelemetryContext(request);
+    const result = await saveTelemetryBatch(user.id, body, requestContext);
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[northmaple-bank] telemetry batch received", JSON.stringify(body, null, 2));

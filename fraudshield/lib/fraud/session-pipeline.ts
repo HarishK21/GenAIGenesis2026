@@ -31,6 +31,9 @@ type RawSessionDoc = {
   testRunId?: unknown;
   agentId?: unknown;
   scenarioId?: unknown;
+  geoRegion?: unknown;
+  deviceLabel?: unknown;
+  unusualLocationFlag?: unknown;
   page?: unknown;
   metadata?: unknown;
   updatedAt?: unknown;
@@ -43,6 +46,8 @@ type RawEventDoc = {
   testRunId?: unknown;
   agentId?: unknown;
   scenarioId?: unknown;
+  geoRegion?: unknown;
+  deviceLabel?: unknown;
   timestamp?: unknown;
   page?: unknown;
   eventType?: unknown;
@@ -248,6 +253,10 @@ function mapTelemetrySummary(
     rapidNavFlag: asBoolean(metadata.rapidNavFlag, false),
     submitDelayMs: asNumber(metadata.submitDelayMs, 0),
     transferAmount: asNumber(metadata.transferAmount, 0),
+    unusualLocationFlag: asBoolean(
+      metadata.unusualLocationFlag ?? doc.unusualLocationFlag,
+      false
+    ),
     currentPage: asString(doc.page, "Transfer"),
     lastEventTime: new Date(asTimestamp(doc.updatedAt)).toISOString(),
     submitted: asBoolean(metadata.submitted, true),
@@ -595,6 +604,10 @@ export async function loadScoredFraudSessions(
               eventMetadata.scenario_id ??
               summaryInput.scenarioId
           ),
+          geoRegion: asOptionalString(eventDoc.geoRegion ?? eventMetadata.geoRegion),
+          deviceLabel: asOptionalString(
+            eventDoc.deviceLabel ?? eventMetadata.deviceLabel
+          ),
           dwellTime: asOptionalNumber(eventMetadata.dwellMs),
           timeBeforeFirstClick: asOptionalNumber(eventMetadata.timeBeforeFirstClickMs),
           mouseTravelDistance: asOptionalNumber(eventMetadata.totalDistance),
@@ -602,6 +615,7 @@ export async function loadScoredFraudSessions(
           hesitationCount: asOptionalNumber(eventMetadata.count),
           transferAmount: asOptionalNumber(eventMetadata.transferAmount),
           unusualAmountFlag: asOptionalBoolean(eventMetadata.unusualAmountFlag),
+          unusualLocationFlag: asOptionalBoolean(eventMetadata.unusualLocationFlag),
           rapidNavFlag: asOptionalBoolean(eventMetadata.rapidNavFlag),
           rapidRepeatedClicks: asOptionalNumber(eventMetadata.rapidRepeatedClicks),
           reviewToSubmitDelayMs: asOptionalNumber(eventMetadata.submitDelayMs)
@@ -617,8 +631,8 @@ export async function loadScoredFraudSessions(
       scenarioId: summaryInput.scenarioId,
       accountId: sourceAccountId,
       accountHolder: userDisplayNameById.get(userId) ?? userId,
-      deviceLabel: asString(metadata.deviceLabel, "Unknown device"),
-      geoRegion: asString(metadata.geoRegion, "Unknown region"),
+      deviceLabel: asString(doc.deviceLabel ?? metadata.deviceLabel, "Unknown device"),
+      geoRegion: asString(doc.geoRegion ?? metadata.geoRegion, "Unknown region"),
       analystDecision: feedback?.analystDecision ?? "Pending",
       events,
       summary: {

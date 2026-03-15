@@ -26,6 +26,13 @@ const CONTRIBUTION_GROUPS: ContributionGroup[] = [
     features: ["unusualAmountFlag", "amountDeviation", "amountZScoreAbs", "logTransferAmount"]
   },
   {
+    key: "location-novelty",
+    label: "Unusual Location",
+    description:
+      "Transfer location deviates from the profile-normal address context.",
+    features: ["unusualLocationFlag"]
+  },
+  {
     key: "erratic-mouse",
     label: "Erratic Mouse Movement",
     description:
@@ -244,6 +251,7 @@ function buildFeatureVector(
 
   return {
     unusualAmountFlag: summary.unusualAmountFlag ? 1 : 0,
+    unusualLocationFlag: summary.unusualLocationFlag ? 1 : 0,
     erraticMouseFlag: summary.erraticMouseFlag ? 1 : 0,
     rapidNavFlag: summary.rapidNavFlag ? 1 : 0,
     hesitationHigh: summary.hesitationCount >= 4 ? 1 : 0,
@@ -387,4 +395,3 @@ export function scoreSession(
     historicalFeatures
   };
 }
-

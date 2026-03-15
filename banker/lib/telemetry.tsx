@@ -303,6 +303,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         "toAccountId",
         "unknown-destination"
       );
+      const unusualLocationFlag = Boolean(metadata?.unusualLocationFlag);
       const tags = sessionTagsRef.current;
       const summary: SessionSummary = {
         sessionId,
@@ -323,6 +324,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         sharpDirectionChanges: mouseRef.current.directionChanges,
         rapidRepeatedClicks: rapidRepeatClickCountRef.current,
         transferAmount,
+        unusualLocationFlag,
         fromAccountId,
         toAccountId,
         majorClickSequence: clickSequenceRef.current.slice(-8),

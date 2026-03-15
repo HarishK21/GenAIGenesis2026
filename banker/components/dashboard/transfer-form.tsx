@@ -302,7 +302,7 @@ export function TransferForm({ intent }: TransferFormProps) {
             </div>
             <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-bank-700" />
-              <p>Transfer amount, unusual-amount flags, and review-to-submit delay for fraud prevention.</p>
+              <p>Transfer amount, unusual location risk, and review-to-submit delay for fraud prevention.</p>
             </div>
           </CardContent>
         </Card>

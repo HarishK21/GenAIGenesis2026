@@ -2,6 +2,7 @@ import "server-only";
 
 import { getDb } from "@/lib/mongodb";
 import { demoAccounts, demoTransactions, demoUser } from "@/lib/demo-data";
+import { type RequestTelemetryContext } from "@/lib/request-fingerprint";
 import { getBankUserById } from "@/lib/test-users";
 import {
   type Account,
@@ -42,6 +43,50 @@ function asOptionalString(value: unknown) {
   }
 
   return undefined;
+}
+
+function asBoolean(value: unknown, fallback = false) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  return fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  return fallback;
+}
+
+function tokenizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function isGeoProfileMismatch(profileAddress: string, geoRegion: string) {
+  const homeTokens = new Set(tokenizeText(profileAddress));
+  const geoTokens = tokenizeText(geoRegion);
+
+  if (!homeTokens.size || !geoTokens.length) {
+    return false;
+  }
+
+  const overlapCount = geoTokens.filter((token) => homeTokens.has(token)).length;
+  const overlapRatio = overlapCount / geoTokens.length;
+
+  return overlapRatio < 0.34;
 }
 
 function sortAccounts(accounts: Account[]) {
@@ -370,20 +415,34 @@ export async function createDeposit(
 
 export async function saveTelemetryBatch(
   userId: string,
-  payload: TelemetryBatchInput
+  payload: TelemetryBatchInput,
+  context: RequestTelemetryContext = {}
 ) {
   await seedUserData(userId);
 
   const db = await getDb();
   const eventsCollection = db.collection("telemetry_events");
   const sessionsCollection = db.collection("telemetry_sessions");
+  const usersCollection = db.collection<DemoUser>("users");
   const receivedAt = new Date().toISOString();
   const source = payload.source ?? "northmaple-bank";
+  const contextGeoRegion = asOptionalString(context.geoRegion);
+  const contextDeviceLabel = asOptionalString(context.deviceLabel);
+  const userRecord = await usersCollection.findOne(
+    { id: userId },
+    { projection: { _id: 0, address: 1 } }
+  );
+  const profileAddress =
+    asOptionalString(userRecord?.address) ?? getRequiredUser(userId).address;
 
   if (payload.events.length) {
     await eventsCollection.insertMany(
       payload.events.map((event) => {
         const metadata = asRecord(event.metadata);
+        const eventGeoRegion = asOptionalString(metadata.geoRegion ?? contextGeoRegion);
+        const eventDeviceLabel = asOptionalString(
+          metadata.deviceLabel ?? contextDeviceLabel
+        );
         const testRunId = asOptionalString(
           event.testRunId ?? metadata.testRunId ?? metadata.test_run_id
         );
@@ -400,7 +459,13 @@ export async function saveTelemetryBatch(
           source,
           sentAt: payload.sentAt,
           receivedAt,
-          metadata,
+          metadata: {
+            ...metadata,
+            ...(eventGeoRegion ? { geoRegion: eventGeoRegion } : {}),
+            ...(eventDeviceLabel ? { deviceLabel: eventDeviceLabel } : {})
+          },
+          geoRegion: eventGeoRegion,
+          deviceLabel: eventDeviceLabel,
           testRunId,
           agentId,
           scenarioId
@@ -415,8 +480,44 @@ export async function saveTelemetryBatch(
   );
 
   await Promise.all(
-    sessionSummaries.map((summaryEvent) =>
-      sessionsCollection.updateOne(
+    sessionSummaries.map(async (summaryEvent) => {
+      const metadata = asRecord(summaryEvent.metadata);
+      const summaryGeoRegion = asOptionalString(
+        metadata.geoRegion ?? contextGeoRegion
+      );
+      const summaryDeviceLabel = asOptionalString(
+        metadata.deviceLabel ?? contextDeviceLabel
+      );
+      const seenGeoRegion = summaryGeoRegion
+        ? await sessionsCollection.findOne(
+            {
+              userId,
+              geoRegion: summaryGeoRegion,
+              sessionId: { $ne: summaryEvent.sessionId }
+            },
+            { projection: { _id: 1 } }
+          )
+        : null;
+      const geoRegionNewForUser = summaryGeoRegion ? !seenGeoRegion : false;
+      const geoProfileMismatch = summaryGeoRegion
+        ? isGeoProfileMismatch(profileAddress, summaryGeoRegion)
+        : false;
+      const suspiciousBehaviorSignals =
+        asBoolean(metadata.rapidNavFlag, false) ||
+        asBoolean(metadata.erraticMouseFlag, false) ||
+        asNumber(metadata.sharpDirectionChanges, 0) >= 20;
+      const unusualLocationFlag =
+        geoProfileMismatch || (geoRegionNewForUser && suspiciousBehaviorSignals);
+      const enrichedMetadata = {
+        ...metadata,
+        ...(summaryGeoRegion ? { geoRegion: summaryGeoRegion } : {}),
+        ...(summaryDeviceLabel ? { deviceLabel: summaryDeviceLabel } : {}),
+        geoRegionNewForUser,
+        geoProfileMismatch,
+        unusualLocationFlag
+      };
+
+      return sessionsCollection.updateOne(
         {
           userId,
           sessionId: summaryEvent.sessionId
@@ -427,7 +528,10 @@ export async function saveTelemetryBatch(
             sessionId: summaryEvent.sessionId,
             page: summaryEvent.page,
             source,
-            metadata: asRecord(summaryEvent.metadata),
+            metadata: enrichedMetadata,
+            geoRegion: summaryGeoRegion,
+            deviceLabel: summaryDeviceLabel,
+            unusualLocationFlag,
             updatedAt: receivedAt,
             testRunId: asOptionalString(
               summaryEvent.testRunId ??
@@ -447,8 +551,8 @@ export async function saveTelemetryBatch(
           }
         },
         { upsert: true }
-      )
-    )
+      );
+    })
   );
 
   return {

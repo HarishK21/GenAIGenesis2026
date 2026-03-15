@@ -16,6 +16,7 @@ export const DEFAULT_FRAUD_POLICY: FraudRiskPolicy = {
     intercept: -2.35,
     coefficients: {
       unusualAmountFlag: 1.35,
+      unusualLocationFlag: 0.58,
       erraticMouseFlag: 0.95,
       rapidNavFlag: 0.72,
       hesitationHigh: 0.48,
@@ -119,4 +120,3 @@ export function getPolicyOverrideFromEnv() {
     return null;
   }
 }
-

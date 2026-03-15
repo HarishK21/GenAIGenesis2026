@@ -29,6 +29,7 @@ export type AnalystDecision = "Pending" | "Safe" | "Review" | "Escalated";
 
 export type RiskFactorKey =
   | "unusual-amount"
+  | "location-novelty"
   | "erratic-mouse"
   | "rapid-navigation"
   | "hesitation"
@@ -54,6 +55,8 @@ export interface TelemetryEvent {
   testRunId?: string;
   agentId?: string;
   scenarioId?: string;
+  geoRegion?: string;
+  deviceLabel?: string;
   dwellTime?: number;
   timeBeforeFirstClick?: number;
   clickSequence?: string[];
@@ -65,6 +68,7 @@ export interface TelemetryEvent {
   focusChangeCount?: number;
   transferAmount?: number;
   unusualAmountFlag?: boolean;
+  unusualLocationFlag?: boolean;
   rapidNavFlag?: boolean;
   rapidRepeatedClicks?: number;
   reviewToSubmitDelayMs?: number;
@@ -81,6 +85,7 @@ export interface SessionSummaryInput {
   rapidNavFlag: boolean;
   submitDelayMs: number;
   transferAmount: number;
+  unusualLocationFlag?: boolean;
   currentPage: string;
   lastEventTime: string;
   submitted: boolean;
