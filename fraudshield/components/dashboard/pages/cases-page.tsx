@@ -69,7 +69,7 @@ export function CasesPage() {
         </Card>
 
         {activeCase ? (
-          <Card>
+          <Card id="case-detail-card">
             <CardHeader>
               <CardTitle>Case Detail</CardTitle>
               <CardDescription>

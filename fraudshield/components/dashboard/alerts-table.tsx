@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { RiskBadge } from "@/components/dashboard/risk-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/fraud/selectors";
@@ -27,7 +29,9 @@ export function AlertsTable({ alerts }: { alerts: AlertRecord[] }) {
             <TableCell>{alert.reason}</TableCell>
             <TableCell>{formatDateTime(alert.timestamp)}</TableCell>
             <TableCell>
-              <RiskBadge value={alert.status} />
+              <Link href={`/dashboard/sessions/${alert.sessionId}`} className="inline-flex">
+                <RiskBadge value={alert.status} />
+              </Link>
             </TableCell>
           </TableRow>
         ))}

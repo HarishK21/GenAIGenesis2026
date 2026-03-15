@@ -65,13 +65,30 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function toRiskVerdict(value: string): AiFraudAssessment["verdict"] {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "high risk" || normalized === "high_risk" || normalized === "high-risk") {
+  if (
+    normalized === "high risk" ||
+    normalized === "high_risk" ||
+    normalized === "high-risk" ||
+    normalized === "high_fraud_risk" ||
+    normalized === "highfraudrisk" ||
+    normalized.includes("high")
+  ) {
     return "High Risk";
   }
 
-  if (normalized === "watch" || normalized === "review") {
+  if (
+    normalized === "watch" ||
+    normalized === "review" ||
+    normalized === "medium" ||
+    normalized.includes("watch") ||
+    normalized.includes("review")
+  ) {
     return "Watch";
   }
 
@@ -113,6 +130,11 @@ function readMessageContent(payload: unknown) {
       .join("\n")
       .trim();
     return text || null;
+  }
+
+  const reasoning = (message as { reasoning?: unknown }).reasoning;
+  if (typeof reasoning === "string" && reasoning.trim()) {
+    return reasoning;
   }
 
   return null;
@@ -181,6 +203,42 @@ function isDevMode() {
   return process.env.NODE_ENV !== "production";
 }
 
+function shouldRetryStatus(status: number) {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+
+function parseRetryAfterMs(raw: string | null) {
+  if (!raw) {
+    return null;
+  }
+
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return clamp(Math.round(seconds * 1000), 0, 60_000);
+  }
+
+  const absoluteTime = Date.parse(raw);
+  if (!Number.isFinite(absoluteTime)) {
+    return null;
+  }
+
+  return clamp(absoluteTime - Date.now(), 0, 60_000);
+}
+
+function computeRetryDelayMs(
+  attempt: number,
+  baseDelayMs: number,
+  retryAfterMs: number | null
+) {
+  const jitterMs = Math.floor(Math.random() * Math.max(50, baseDelayMs));
+  if (typeof retryAfterMs === "number") {
+    return clamp(retryAfterMs + jitterMs, 100, 60_000);
+  }
+
+  const exponentialBackoff = baseDelayMs * 2 ** attempt;
+  return clamp(exponentialBackoff + jitterMs, 100, 15_000);
+}
+
 function getAiConfig() {
   const enabled = readBooleanEnv("FRAUD_AI_ENABLED", false);
   const baseUrl = normalizeBaseUrl(
@@ -190,6 +248,17 @@ function getAiConfig() {
   const apiKey = process.env.FRAUD_AI_API_KEY ?? process.env.OPENAI_API_KEY ?? "test";
   const timeoutMs = clamp(readNumberEnv("FRAUD_AI_TIMEOUT_MS", 2500), 500, 15_000);
   const cacheTtlMs = clamp(readNumberEnv("FRAUD_AI_CACHE_TTL_MS", 300_000), 0, 3_600_000);
+  const maxRetries = clamp(readNumberEnv("FRAUD_AI_MAX_RETRIES", 2), 0, 5);
+  const retryBaseDelayMs = clamp(
+    readNumberEnv("FRAUD_AI_RETRY_BASE_DELAY_MS", 650),
+    100,
+    5_000
+  );
+  const maxOutputTokens = clamp(
+    readNumberEnv("FRAUD_AI_MAX_OUTPUT_TOKENS", 512),
+    120,
+    1_200
+  );
 
   return {
     enabled,
@@ -197,7 +266,41 @@ function getAiConfig() {
     model,
     apiKey,
     timeoutMs,
-    cacheTtlMs
+    cacheTtlMs,
+    maxRetries,
+    retryBaseDelayMs,
+    maxOutputTokens
+  };
+}
+
+function buildResponseFormat() {
+  return {
+    type: "json_schema" as const,
+    json_schema: {
+      name: "fraud_assessment",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "risk_probability",
+          "confidence",
+          "verdict",
+          "rationale",
+          "reason_tags"
+        ],
+        properties: {
+          risk_probability: { type: "number", minimum: 0, maximum: 1 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          verdict: { type: "string" },
+          rationale: { type: "string" },
+          reason_tags: {
+            type: "array",
+            items: { type: "string" },
+            maxItems: 6
+          }
+        }
+      }
+    }
   };
 }
 
@@ -252,86 +355,108 @@ export function isAiFraudAssessmentEnabled() {
 }
 
 export function getAiAssessmentBudget() {
-  return clamp(readNumberEnv("FRAUD_AI_MAX_SESSIONS_PER_REQUEST", 40), 0, 250);
+  return clamp(readNumberEnv("FRAUD_AI_MAX_SESSIONS_PER_REQUEST", 12), 0, 120);
 }
 
 export function getAiAssessmentConcurrency() {
-  return clamp(readNumberEnv("FRAUD_AI_MAX_CONCURRENCY", 6), 1, 20);
+  return clamp(readNumberEnv("FRAUD_AI_MAX_CONCURRENCY", 2), 1, 8);
 }
 
 async function requestAiAssessment(
   input: AiAssessmentInput,
   config: ReturnType<typeof getAiConfig>
 ) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  for (let attempt = 0; attempt <= config.maxRetries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
-  try {
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify({
+    try {
+      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            { role: "system", content: buildSystemPrompt() },
+            { role: "user", content: buildUserPrompt(input) }
+          ],
+          temperature: 0,
+          max_tokens: config.maxOutputTokens,
+          response_format: buildResponseFormat()
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const canRetry =
+          attempt < config.maxRetries && shouldRetryStatus(response.status);
+        if (isDevMode()) {
+          console.warn(
+            `[FraudShield AI] endpoint returned ${response.status} for session ${input.sessionId} (attempt ${attempt + 1}/${config.maxRetries + 1})`
+          );
+        }
+
+        if (!canRetry) {
+          return null;
+        }
+
+        const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+        await sleep(
+          computeRetryDelayMs(attempt, config.retryBaseDelayMs, retryAfterMs)
+        );
+        continue;
+      }
+
+      const payload = await response.json().catch(() => null);
+      const content = payload ? readMessageContent(payload) : null;
+      if (!content) {
+        return null;
+      }
+
+      const parsed = parseAiPayload(content);
+      if (!parsed) {
+        return null;
+      }
+
+      return {
+        provider: "huggingface-openai-compatible",
         model: config.model,
-        messages: [
-          { role: "system", content: buildSystemPrompt() },
-          { role: "user", content: buildUserPrompt(input) }
-        ],
-        temperature: 0,
-        max_tokens: 180
-      }),
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
+        riskProbability: clamp(parsed.risk_probability, 0, 1),
+        confidence: clamp(parsed.confidence, 0, 1),
+        verdict: toRiskVerdict(parsed.verdict),
+        rationale: parsed.rationale.trim() || "No rationale returned by model.",
+        reasonTags:
+          Array.isArray(parsed.reason_tags) && parsed.reason_tags.length
+            ? parsed.reason_tags
+                .map((tag) => String(tag).trim())
+                .filter(Boolean)
+                .slice(0, 5)
+            : [],
+        generatedAt: new Date().toISOString()
+      } satisfies AiFraudAssessment;
+    } catch (error) {
+      const canRetry = attempt < config.maxRetries;
       if (isDevMode()) {
         console.warn(
-          `[FraudShield AI] endpoint returned ${response.status} for session ${input.sessionId}`
+          `[FraudShield AI] assessment failed for session ${input.sessionId} (attempt ${attempt + 1}/${config.maxRetries + 1}):`,
+          error
         );
       }
-      return null;
-    }
 
-    const payload = await response.json().catch(() => null);
-    const content = payload ? readMessageContent(payload) : null;
-    if (!content) {
-      return null;
-    }
+      if (!canRetry) {
+        return null;
+      }
 
-    const parsed = parseAiPayload(content);
-    if (!parsed) {
-      return null;
+      await sleep(computeRetryDelayMs(attempt, config.retryBaseDelayMs, null));
+    } finally {
+      clearTimeout(timeout);
     }
-
-    return {
-      provider: "huggingface-openai-compatible",
-      model: config.model,
-      riskProbability: clamp(parsed.risk_probability, 0, 1),
-      confidence: clamp(parsed.confidence, 0, 1),
-      verdict: toRiskVerdict(parsed.verdict),
-      rationale: parsed.rationale.trim() || "No rationale returned by model.",
-      reasonTags:
-        Array.isArray(parsed.reason_tags) && parsed.reason_tags.length
-          ? parsed.reason_tags
-              .map((tag) => String(tag).trim())
-              .filter(Boolean)
-              .slice(0, 5)
-          : [],
-      generatedAt: new Date().toISOString()
-    } satisfies AiFraudAssessment;
-  } catch (error) {
-    if (isDevMode()) {
-      console.warn(
-        `[FraudShield AI] assessment failed for session ${input.sessionId}:`,
-        error
-      );
-    }
-    return null;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  return null;
 }
 
 export async function assessFraudRiskWithAi(

@@ -2,7 +2,10 @@
 
 Runs authenticated bank UI sessions with deterministic users, run/agent/scenario tags, and writes one canonical artifact batch in-repo.
 Transfer amounts are varied per session (not fixed at `$10`) while staying below unusual-amount thresholds.
-Flagged scenarios are intentionally mixed so alert reasons include more than erratic mouse patterns.
+Flagged scenarios are intentionally mixed so alerts include High + Medium severities and non-erratic reasons:
+- `flagged-erratic-nav` (high severity path)
+- `flagged-cognitive-drift` (high severity, hesitation/correction pattern)
+- `flagged-review-corrections` (medium severity tendency, correction-heavy review flow)
 
 ## Run
 
@@ -34,6 +37,8 @@ node testing/session-harness/simulate-session-batch.js \
 - `--bankUrl=http://localhost:3000`
 - `--fraudUrl=http://localhost:3001/api/fraud/sessions`
 - `--fraudMetricsUrl=http://localhost:3001/api/fraud/metrics`
+- `--fraudFeedbackUrl=http://localhost:3001/api/fraud/feedback`
+- `--autoLabel=true|false` (default `true`, writes synthetic analyst outcomes)
 
 ## Output
 

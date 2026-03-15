@@ -8,6 +8,8 @@ const DEFAULT_FRAUD_SESSIONS_API =
   process.env.FRAUD_SESSIONS_API ?? "http://localhost:3001/api/fraud/sessions";
 const DEFAULT_FRAUD_METRICS_API =
   process.env.FRAUD_METRICS_API ?? "http://localhost:3001/api/fraud/metrics";
+const DEFAULT_FRAUD_FEEDBACK_API =
+  process.env.FRAUD_FEEDBACK_API ?? "http://localhost:3001/api/fraud/feedback";
 const DEFAULT_TEST_USER_COUNT = Number.parseInt(
   process.env.TEST_USER_COUNT ?? "50",
   10
@@ -120,6 +122,8 @@ function getConfig() {
     bankUrl: args.bankUrl ?? DEFAULT_BANK_URL,
     fraudSessionsApi: args.fraudUrl ?? DEFAULT_FRAUD_SESSIONS_API,
     fraudMetricsApi: args.fraudMetricsUrl ?? DEFAULT_FRAUD_METRICS_API,
+    fraudFeedbackApi: args.fraudFeedbackUrl ?? DEFAULT_FRAUD_FEEDBACK_API,
+    autoLabel: asBoolean(args.autoLabel, true),
     testUserCount
   };
 }
@@ -223,6 +227,112 @@ async function fetchFraudMetrics(baseUrl, filters = {}) {
   }
 
   return payload;
+}
+
+function parseAgentOrdinal(agentId) {
+  if (typeof agentId !== "string") {
+    return 0;
+  }
+
+  const match = agentId.match(/(\d+)$/);
+  if (!match) {
+    return 0;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildSyntheticFeedbackPayload(sessionDetail) {
+  const ordinal = parseAgentOrdinal(sessionDetail.agentId);
+  const scenarioId = sessionDetail.scenarioId ?? "";
+  const expectedFlagged = Boolean(sessionDetail.expectedFlagged);
+  const isReviewCorrectionScenario = scenarioId === "flagged-review-corrections";
+  const treatAsLegitReviewCase =
+    expectedFlagged && isReviewCorrectionScenario && ordinal % 12 === 4;
+  const injectRareMissedFraud = !expectedFlagged && ordinal % 23 === 0;
+
+  let outcome = "legit";
+  let analystDecision = "Safe";
+  let caseStatus = "Resolved";
+
+  if (expectedFlagged && !treatAsLegitReviewCase) {
+    outcome = "fraud";
+    analystDecision = "Escalated";
+    caseStatus = "Investigating";
+  }
+
+  if (injectRareMissedFraud) {
+    outcome = "fraud";
+    analystDecision = "Escalated";
+    caseStatus = "Investigating";
+  }
+
+  const notes = `Synthetic analyst label (${scenarioId || "unknown-scenario"})`;
+
+  return {
+    sessionId: sessionDetail.sessionId,
+    outcome,
+    analystDecision,
+    caseStatus,
+    notes
+  };
+}
+
+async function postSyntheticFeedback(feedbackApi, sessionDetails) {
+  const payloads = sessionDetails
+    .filter((item) => typeof item.sessionId === "string" && item.sessionId)
+    .map((item) => buildSyntheticFeedbackPayload(item));
+
+  if (!payloads.length) {
+    return {
+      attempted: 0,
+      succeeded: 0,
+      failed: 0,
+      failures: []
+    };
+  }
+
+  const results = await runWithConcurrency(payloads, 6, async (payload) => {
+    try {
+      const response = await fetch(feedbackApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        return {
+          sessionId: payload.sessionId,
+          ok: false,
+          status: response.status,
+          error: body || `HTTP ${response.status}`
+        };
+      }
+
+      return {
+        sessionId: payload.sessionId,
+        ok: true,
+        status: response.status
+      };
+    } catch (error) {
+      return {
+        sessionId: payload.sessionId,
+        ok: false,
+        status: null,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  const failed = results.filter((result) => !result.ok);
+  return {
+    attempted: payloads.length,
+    succeeded: results.length - failed.length,
+    failed: failed.length,
+    failures: failed.slice(0, 5)
+  };
 }
 
 async function maybeAcceptConsent(page) {
@@ -412,6 +522,23 @@ function getScenarioTemplates() {
           noteText: "",
           preReviewWaitMs: 300,
           reviewWaitMs: 700
+        });
+      }
+    },
+    {
+      scenarioId: "flagged-review-corrections",
+      target: "flagged",
+      geoMode: "normal",
+      flow: async (page, item) => {
+        await gotoTransfer(page, { waitBeforeNavMs: 2200 });
+        await doCorrectionBursts(page);
+        await page.waitForTimeout(2400);
+        await submitTransfer(page, {
+          amount: item.transferAmount,
+          noteText: "vendor reconciliation",
+          preReviewWaitMs: 7500,
+          reviewWaitMs: 6500,
+          noteKeyDelay: 24
         });
       }
     },
@@ -699,6 +826,8 @@ async function main() {
         bankUrl: config.bankUrl,
         fraudSessionsApi: config.fraudSessionsApi,
         fraudMetricsApi: config.fraudMetricsApi,
+        fraudFeedbackApi: config.fraudFeedbackApi,
+        autoLabel: config.autoLabel,
         headless: config.headless
       },
       totalsBeforeRun: initialForRun.length,
@@ -713,6 +842,13 @@ async function main() {
       },
       sessions: sessionDetails
     };
+
+    if (config.autoLabel) {
+      report.syntheticLabeling = await postSyntheticFeedback(
+        config.fraudFeedbackApi,
+        sessionDetails
+      );
+    }
 
     try {
       const metrics = await fetchFraudMetrics(config.fraudMetricsApi, {

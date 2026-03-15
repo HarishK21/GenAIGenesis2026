@@ -10,7 +10,7 @@ import {
   getPolicyOverrideFromEnv,
   mergeFraudPolicy
 } from "@/lib/fraud/policy";
-import { scoreSession } from "@/lib/fraud/scoring";
+import { getRiskStatus, scoreSession } from "@/lib/fraud/scoring";
 import {
   type AlertSeverity,
   type AnalystDecision,
@@ -271,16 +271,87 @@ function shouldRequestAiAssessment(
   baseRiskScore: number,
   policy: FraudRiskPolicy
 ) {
-  const nearDecisionBoundary = baseRiskScore >= Math.max(12, policy.thresholds.watch - 12);
-
-  return (
-    nearDecisionBoundary ||
+  const hasComplexSignal =
     summary.unusualLocationFlag ||
     summary.erraticMouseFlag ||
     summary.rapidNavFlag ||
+    summary.correctionCount >= 3 ||
     summary.hesitationCount >= 4 ||
-    summary.rapidRepeatedClicks >= 3
-  );
+    summary.rapidRepeatedClicks >= 3;
+  const nearDecisionBoundary =
+    baseRiskScore >= Math.max(20, policy.thresholds.watch - 8) &&
+    baseRiskScore <= policy.thresholds.high + 20;
+  const alreadyFlagged = baseRiskScore >= policy.thresholds.watch;
+
+  return hasComplexSignal && (alreadyFlagged || nearDecisionBoundary);
+}
+
+function getAiCandidatePriority(
+  summary: SessionSummaryInput,
+  baseRiskScore: number,
+  policy: FraudRiskPolicy
+) {
+  const boundaryDistance = Math.abs(baseRiskScore - policy.thresholds.watch);
+  const boundaryPriority = Math.max(0, 100 - boundaryDistance);
+  const signalPriority =
+    (summary.unusualLocationFlag ? 20 : 0) +
+    (summary.erraticMouseFlag ? 18 : 0) +
+    (summary.rapidNavFlag ? 14 : 0) +
+    (summary.correctionCount >= 3 ? 10 : 0) +
+    (summary.hesitationCount >= 4 ? 12 : 0) +
+    (summary.rapidRepeatedClicks >= 3 ? 10 : 0);
+  const flaggedBonus = baseRiskScore >= policy.thresholds.watch ? 12 : 0;
+
+  return boundaryPriority + signalPriority + flaggedBonus;
+}
+
+function clampScore(score: number) {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function adjustScoreWithAiAdjudication(
+  baseScored: ReturnType<typeof scoreSession>,
+  aiScored: ReturnType<typeof scoreSession>,
+  aiAssessment: NonNullable<Awaited<ReturnType<typeof assessFraudRiskWithAi>>>,
+  policy: FraudRiskPolicy
+) {
+  const watchThreshold = policy.thresholds.watch;
+  const baseScore = baseScored.currentRiskScore;
+  const aiConfidence = aiAssessment.confidence;
+  const aiRisk = aiAssessment.riskProbability;
+  const baseRisk = baseScored.riskProbability;
+
+  // Weighted consensus between deterministic rules and LLM judgment.
+  const blendWeight = Math.min(0.58, Math.max(0.28, 0.22 + aiConfidence * 0.45));
+  const blendedProbability = baseRisk * (1 - blendWeight) + aiRisk * blendWeight;
+  let adjustedScore = clampScore(blendedProbability * 100);
+
+  // Borderline watch sessions are adjudicated to reduce avoidable false positives.
+  if (
+    baseScore >= watchThreshold &&
+    baseScore <= watchThreshold + 8 &&
+    aiAssessment.verdict !== "High Risk" &&
+    aiConfidence >= 0.5
+  ) {
+    adjustedScore = clampScore(adjustedScore - 6);
+  }
+
+  // Borderline normals get a lift only when AI is strongly confident in high risk.
+  if (
+    baseScore < watchThreshold &&
+    baseScore >= watchThreshold - 12 &&
+    aiAssessment.verdict === "High Risk" &&
+    aiConfidence >= 0.62
+  ) {
+    adjustedScore = clampScore(adjustedScore + 6);
+  }
+
+  return {
+    ...aiScored,
+    currentRiskScore: adjustedScore,
+    riskProbability: adjustedScore / 100,
+    status: getRiskStatus(adjustedScore, policy)
+  };
 }
 
 function mapTelemetrySummary(
@@ -745,7 +816,22 @@ export async function loadScoredFraudSessions(
 
   if (aiEnabled && aiCandidates.length) {
     const budget = getAiAssessmentBudget();
-    const candidatesWithinBudget = aiCandidates.slice(0, budget);
+    const candidatesWithinBudget = [...aiCandidates]
+      .sort((left, right) => {
+        const leftPriority = getAiCandidatePriority(
+          left.draft.summaryInput,
+          left.baseScored.currentRiskScore,
+          policy
+        );
+        const rightPriority = getAiCandidatePriority(
+          right.draft.summaryInput,
+          right.baseScored.currentRiskScore,
+          policy
+        );
+
+        return rightPriority - leftPriority;
+      })
+      .slice(0, budget);
     const assessed = await mapWithConcurrency(
       candidatesWithinBudget,
       getAiAssessmentConcurrency(),
@@ -780,21 +866,36 @@ export async function loadScoredFraudSessions(
   const sessions: FraudSession[] = sessionDrafts.map((draft) => {
     const baseScored = baseScoredBySession.get(draft.sessionId);
     const aiAssessment = aiAssessmentBySession.get(draft.sessionId) ?? undefined;
+    const shouldApplyAiAdjustment = Boolean(
+      aiAssessment &&
+        aiAssessment.confidence >= 0.45 &&
+        ((baseScored?.currentRiskScore ?? 0) >= policy.thresholds.watch - 12 ||
+          (aiAssessment.verdict === "High Risk" && aiAssessment.confidence >= 0.62))
+    );
     const summaryInput =
-      aiAssessment && aiAssessment.confidence >= 0.35
+      shouldApplyAiAdjustment
         ? {
             ...draft.summaryInput,
-            aiRiskScore: aiAssessment.riskProbability * aiAssessment.confidence
+            aiRiskScore: (aiAssessment?.riskProbability ?? 0) * (aiAssessment?.confidence ?? 0)
           }
         : draft.summaryInput;
 
-    const scored =
-      aiAssessment && aiAssessment.confidence >= 0.35
+    const scoredWithAiFeature =
+      shouldApplyAiAdjustment
         ? scoreSession(summaryInput, {
             policy,
             historicalFeatures: draft.historicalFeatures
           })
         : baseScored;
+    const scored =
+      shouldApplyAiAdjustment && baseScored && aiAssessment && scoredWithAiFeature
+        ? adjustScoreWithAiAdjudication(
+            baseScored,
+            scoredWithAiFeature,
+            aiAssessment,
+            policy
+          )
+        : scoredWithAiFeature;
 
     return {
       sessionId: draft.sessionId,

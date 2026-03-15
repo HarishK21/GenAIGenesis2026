@@ -18,6 +18,15 @@ export function CasesTable({
   onSelectCase: (caseId: string) => void;
   onUpdateStatus: (caseId: string, status: CaseRecord["status"]) => void;
 }) {
+  const handleOpenCase = (caseId: string) => {
+    onSelectCase(caseId);
+
+    const detailCard = document.getElementById("case-detail-card");
+    if (detailCard) {
+      detailCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -58,11 +67,7 @@ export function CasesTable({
             <TableCell>{caseRecord.status}</TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSelectCase(caseRecord.id)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => handleOpenCase(caseRecord.id)}>
                   Open case
                 </Button>
                 <Button
