@@ -13,10 +13,15 @@ out/
 # Build
 dist/
 build/
+**/tsconfig.tsbuildinfo
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
 
 # IDE
 .vscode/
@@ -26,3 +31,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Generated test artifacts
+banker/testing/session-harness/latest/*
+!banker/testing/session-harness/latest/.gitkeep

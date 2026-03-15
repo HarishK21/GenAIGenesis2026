@@ -7,6 +7,8 @@ import {
 import { parseSessionFilterCriteria } from "@/lib/fraud/filter-query";
 import type { AlertRecord } from "@/lib/fraud/types";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/fraud/alerts
  *

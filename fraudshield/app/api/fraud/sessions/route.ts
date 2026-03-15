@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { loadScoredFraudSessions } from "@/lib/fraud/session-pipeline";
 import { parseSessionFilterCriteria } from "@/lib/fraud/filter-query";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/fraud/sessions
  *

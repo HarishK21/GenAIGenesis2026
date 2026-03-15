@@ -49,5 +49,7 @@ Single canonical output folder:
 - `testing/session-harness/latest/*.webm`
 - `testing/session-harness/latest/*-activity.png`
 
+These artifacts are generated per run and intentionally not committed to source control.
+
 `report.json` also includes `monitoring.modelComparison` when the FraudShield metrics
 API is reachable, with rules-only vs rules+AI precision/recall/F1 deltas and added latency.

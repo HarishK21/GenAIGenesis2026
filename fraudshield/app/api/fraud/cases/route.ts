@@ -7,6 +7,8 @@ import {
 import { parseSessionFilterCriteria } from "@/lib/fraud/filter-query";
 import type { CaseRecord } from "@/lib/fraud/types";
 
+export const dynamic = "force-dynamic";
+
 function getAnalystPool() {
   const configured = (process.env.FRAUD_ANALYST_POOL ?? "")
     .split(",")

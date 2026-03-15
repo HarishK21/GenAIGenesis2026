@@ -10,6 +10,8 @@ import {
   type TierEvaluationMetric
 } from "@/lib/fraud/types";
 
+export const dynamic = "force-dynamic";
+
 type LabeledSession = {
   sessionId: string;
   score: number;
