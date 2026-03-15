@@ -54,11 +54,27 @@ export function HomeDashboard() {
                   Transfer Money
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-white/50 backdrop-blur-sm border-white/50">
+              <Button asChild variant="outline" size="lg" className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-bank-50 border-bank-200 text-bank-800 hover:bg-bank-100">
                 <Link href="/transfer" data-telemetry-id="quick-pay-bill" data-telemetry-area="hero-actions">
                   <ReceiptText className="mr-2 h-4 w-4" />
                   Pay Bill
                 </Link>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md bg-bank-50 border-bank-200 text-bank-800 hover:bg-bank-100 sm:col-span-2"
+                data-telemetry-id="quick-deposit" 
+                data-telemetry-area="hero-actions"
+                onClick={async () => {
+                  if (accounts.length > 0) {
+                    await useBankStore.getState().depositFunds(accounts[0].id, 1000);
+                  }
+                }}
+                disabled={isLoading}
+              >
+                <WalletCards className="mr-2 h-4 w-4" />
+                Quick Deposit ($1k)
               </Button>
             </div>
           </div>

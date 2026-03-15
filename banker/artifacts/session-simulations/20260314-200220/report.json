@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-15T00:02:51.693Z",
+  "outputDir": "C:\\Users\\light\\OneDrive\\Documents\\GitHub\\GenAIGenesis2026\\banker\\artifacts\\session-simulations\\20260314-200220",
+  "nonFlagged": {
+    "sessionId": "28a36e06-4518-4428-9743-e1a6cea5d3c5",
+    "score": 57,
+    "status": "Watch",
+    "topFlags": [
+      "Unusual Amount",
+      "Amount Deviation",
+      "Behavior Drift"
+    ],
+    "reasonCodes": [
+      "unusual-amount",
+      "amount-deviation",
+      "behavior-drift"
+    ],
+    "videoPath": "C:\\Users\\light\\OneDrive\\Documents\\GitHub\\GenAIGenesis2026\\banker\\artifacts\\session-simulations\\20260314-200220\\01-non-flagged.webm",
+    "activityScreenshotPath": "C:\\Users\\light\\OneDrive\\Documents\\GitHub\\GenAIGenesis2026\\banker\\artifacts\\session-simulations\\20260314-200220\\01-non-flagged-activity.png"
+  },
+  "flagged": {
+    "sessionId": "bd84662a-1f98-4015-bf1f-a9a0004ede16",
+    "score": 99,
+    "status": "High Risk",
+    "topFlags": [
+      "Erratic Mouse Movement",
+      "Velocity Spike",
+      "Behavior Drift"
+    ],
+    "reasonCodes": [
+      "erratic-mouse",
+      "velocity-spike",
+      "behavior-drift"
+    ],
+    "videoPath": "C:\\Users\\light\\OneDrive\\Documents\\GitHub\\GenAIGenesis2026\\banker\\artifacts\\session-simulations\\20260314-200220\\02-flagged.webm",
+    "activityScreenshotPath": "C:\\Users\\light\\OneDrive\\Documents\\GitHub\\GenAIGenesis2026\\banker\\artifacts\\session-simulations\\20260314-200220\\02-flagged-activity.png"
+  }
+}

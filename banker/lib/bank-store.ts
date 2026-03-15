@@ -17,6 +17,7 @@ interface BankState {
   refresh: () => Promise<void>;
   submitTransfer: (payload: TransferRequest) => Promise<BankSnapshot>;
   updateUser: (payload: Partial<DemoUser>) => Promise<BankSnapshot>;
+  depositFunds: (accountId: string, amount: number) => Promise<BankSnapshot>;
   resetData: () => Promise<BankSnapshot>;
 }
 
@@ -63,6 +64,21 @@ async function postUserProfile(payload: Partial<DemoUser>) {
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.error ?? "Unable to update the user profile.");
+  }
+
+  return (await response.json()) as BankSnapshot;
+}
+
+async function postDeposit(accountId: string, amount: number) {
+  const response = await fetch("/api/bank/deposit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountId, amount })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error ?? "Unable to deposit funds.");
   }
 
   return (await response.json()) as BankSnapshot;
@@ -165,6 +181,18 @@ export const useBankStore = create<BankState>((set, get) => ({
       return snapshot;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to update profile.";
+      set({ error: message, isLoading: false });
+      throw error;
+    }
+  },
+  depositFunds: async (accountId, amount) => {
+    set({ isLoading: true, error: null });
+    try {
+      const snapshot = await postDeposit(accountId, amount);
+      applySnapshot(set, snapshot);
+      return snapshot;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to deposit funds.";
       set({ error: message, isLoading: false });
       throw error;
     }
