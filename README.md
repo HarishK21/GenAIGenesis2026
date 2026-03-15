@@ -11,10 +11,10 @@ The inspiration for **FraudShield** paired with the **NorthMaple Bank** simulati
 We recognized a critical gap: while a compromised credential grants access, the *behavior* of the malicious actor (or bot) is fundamentally different from the legitimate account owner. Our project aims to prove that by capturing deep, ambient telemetry—erratic mouse movements, rapid navigation loops, and typing hesitation bursts—and pairing it with an AI-driven behavioral drift analyzer, we can flag anomalous sessions with high precision before fraudulent transfers execute. We built this dual-site ecosystem to provide a tangible, end-to-end sandbox demonstrating how next-generation, AI-enhanced behavioral biometrics can secure the future of online banking.
 
 ### Technology Stack
-- **Languages:** TypeScript, JavaScript, HTML, CSS
+- **Languages:** TypeScript, JavaScript, HTML, CSS, Python
 - **Frameworks and Libraries:** Next.js 14, React, Tailwind CSS, Shadcn/ui (for accessible, premium UI components), Zustand (for centralized state management), Playwright (for automated concurrency testing harness), MongoDB Node.js Driver.
 - **Platforms:** Local MongoDB (for secure, high-speed data synchronization between the micro-frontends) and HuggingFace Inference Endpoints (hosting the generative LLM for AI behavioral scoring).
-- **Tools:** Node.js, Git, GitHub.
+- **Tools:** Node.js, Git, GitHub, Railtracks.
 
 ### Product Summary
 **NorthMaple Bank & FraudShield** is a two-site behavioral fraud detection ecosystem. 
@@ -95,3 +95,20 @@ cd banker
 node testing/session-harness/simulate-session-batch.js --phase=scale50 --total=50 --concurrency=10
 ```
 This script drives 50 Headless browsers (in parallel) performing various legitimate and fraudulent transfer behaviors, outputting metrics and validation accuracy to `banker/testing/session-harness/latest/report.json`.
+
+---
+
+## 🛤️ Railtracks Testing
+
+This project also features **Railtracks** support for AI validation orchestration and deeper event emission.
+
+To use the Railtracks-enabled wrapper, install the required Python dependencies first:
+```bash
+cd banker
+pip install -r requirements.txt
+```
+
+Run the validation:
+```bash
+python testing/railtracks/run_ab_validation.py --phase=scale50 --total=50 --concurrency=10
+```
