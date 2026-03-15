@@ -102,13 +102,12 @@ This script drives 50 Headless browsers (in parallel) performing various legitim
 
 This project also features **Railtracks** support for AI validation orchestration and deeper event emission.
 
-To use the Railtracks-enabled wrapper, install the required Python dependencies first:
+To use the Railtracks-enabled wrapper, install the required Python dependencies from the root directory:
 ```bash
-cd banker
 pip install -r requirements.txt
 ```
 
-Run the validation:
+Run the validation from the root directory:
 ```bash
 python testing/railtracks/run_ab_validation.py --phase=scale50 --total=50 --concurrency=10
 ```
